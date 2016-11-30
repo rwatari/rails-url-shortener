@@ -1,6 +1,8 @@
 class ShortenedUrl < ActiveRecord::Base
   validates :long_url, :short_url, :user_id, presence: true
   validates :short_url, uniqueness: true
+  validates :long_url, length: { maximum: 1024 }
+  validate :recent_submission_count
 
   def self.random_code
     random_short_url = SecureRandom.urlsafe_base64
@@ -17,6 +19,16 @@ class ShortenedUrl < ActiveRecord::Base
       long_url: long_url,
       short_url: self.random_code
     )
+  end
+
+  def recent_submission_count
+    if ShortenedUrl.where([
+      "user_id = ? AND created_at > ?",
+      self.user_id,
+      1.minute.ago
+      ]).count < 5
+      errors[:recent_submission_count] << "is too large"
+    end
   end
 
   # def num_uniques
