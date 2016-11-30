@@ -2,7 +2,7 @@ class ShortenedUrl < ActiveRecord::Base
   validates :long_url, :short_url, :user_id, presence: true
   validates :short_url, uniqueness: true
   validates :long_url, length: { maximum: 1024 }
-  validate :recent_submission_count
+  validate :recent_submission_count, :premium_user
 
   def self.random_code
     random_short_url = SecureRandom.urlsafe_base64
@@ -26,8 +26,15 @@ class ShortenedUrl < ActiveRecord::Base
       "user_id = ? AND created_at > ?",
       self.user_id,
       1.minute.ago
-      ]).count < 5
+      ]).count > 5
       errors[:recent_submission_count] << "is too large"
+    end
+  end
+
+  def premium_user
+    user = User.find(self.user_id)
+    if !user.premium && user.submitted_urls.count >= 5
+      errors[:user] << "is not a premium user"
     end
   end
 
